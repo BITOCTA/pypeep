@@ -16,6 +16,10 @@ Try the [interactive debugger](https://artemsokh.in/projects/pypeep).
 
 ## Installation
 
+### Using Claude Marketplace (Claude Code)
+
+Install in Claude Code with two commands:
+
 ```
 /plugin marketplace add BITOCTA/pypeep
 /plugin install pypeep@pypeep
