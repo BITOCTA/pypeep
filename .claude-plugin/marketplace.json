@@ -1,16 +1,25 @@
 {
   "name": "pypeep",
+  "id": "pypeep",
   "owner": {
     "name": "Artem Sokhin"
+  },
+  "metadata": {
+    "description": "Step-by-step Python execution tracer using sys.settrace(). Debug programs, verify fixes, understand code flow, and detect common Python gotchas.",
+    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "pypeep",
-      "source": ".",
+      "source": "./",
       "description": "Step-by-step Python execution tracer using sys.settrace(). Debug programs, verify fixes, understand code flow, and detect common Python gotchas.",
       "version": "1.0.0",
-      "license": "MIT",
-      "keywords": ["python", "debugger", "tracer", "execution"]
+      "author": {
+        "name": "Artem Sokhin"
+      },
+      "keywords": ["python", "debugger", "tracer", "execution"],
+      "category": "development",
+      "strict": false
     }
   ]
 }
