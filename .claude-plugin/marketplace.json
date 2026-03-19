@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Step-by-step Python execution tracer using sys.settrace(). Debug programs, verify fixes, understand code flow, and detect common Python gotchas.",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "plugins": [
     {
       "name": "pypeep",
       "source": "./",
       "description": "Step-by-step Python execution tracer using sys.settrace(). Debug programs, verify fixes, understand code flow, and detect common Python gotchas.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": {
         "name": "Artem Sokhin"
       },
