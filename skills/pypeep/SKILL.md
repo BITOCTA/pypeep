@@ -18,7 +18,7 @@ Use it to debug, test, and understand Python code.
 The tracer script is located relative to this skill file:
 
 ```bash
-python "{{SKILL_DIR}}/tracer/parse.py" <target_file.py> [--mode overview|locals|full] [--threads]
+python "{{SKILL_DIR}}/tracer/parse.py" <target_file.py> [--mode overview|locals|full] [--threads] [--max-events N] [--max-recursion N] [--timeout N]
 ```
 
 ### Output modes
@@ -35,6 +35,17 @@ python "{{SKILL_DIR}}/tracer/parse.py" <target_file.py> [--mode overview|locals|
 
 **Only use `--threads` when the code uses `threading`/`concurrent.futures`.** Without it, the output stays cleaner and smaller.
 
+### Safety limits
+
+- `--max-events N` — stop tracing after N events (default: 10000, 0 = unlimited)
+- `--max-recursion N` — stop tracing when a function recurses beyond N depth (default: 200, 0 = disabled)
+- `--timeout N` — stop execution after N seconds via SIGALRM (default: 10, 0 = disabled)
+- `--max-depth N` — max nesting depth for variable repr (default: 10)
+- `--max-items N` — max items per container in repr (default: 50)
+- `--max-str-len N` — max string repr length (default: 200)
+
+When a limit is hit, the tracer emits a `"limit"` event with a `"message"` field explaining what happened, then outputs all events collected so far. The traced program continues running untraced until it finishes or the timeout kills it.
+
 **For inline code snippets:** pipe the code into the wrapper script which handles temp file creation and cleanup automatically:
 ```bash
 bash "{{SKILL_DIR}}/tracer/run_snippet.sh" [--mode overview|locals|full] << 'PYEOF'
@@ -42,7 +53,7 @@ bash "{{SKILL_DIR}}/tracer/run_snippet.sh" [--mode overview|locals|full] << 'PYE
 PYEOF
 ```
 
-**Important:** Use the Bash tool's built-in timeout (set to 30000ms) to prevent infinite loops from hanging.
+**Note:** The tracer has built-in safety limits (event count, recursion depth, timeout) that prevent infinite loops from hanging. You can still set the Bash tool's timeout as an extra safeguard.
 
 ## Output format
 
@@ -51,7 +62,7 @@ The tracer outputs a JSON array of TraceEvent objects to stdout:
 ```json
 [
   {
-    "event": "call | line | return | exception",
+    "event": "call | line | return | exception | limit",
     "line": 14,
     "function": "add_user",
     "locals": {
@@ -59,14 +70,15 @@ The tracer outputs a JSON array of TraceEvent objects to stdout:
       "roles": {
         "__id__": 4350457280,
         "__type__": "dict",
-        "__entries__": { "0": "'superuser'" }
+        "__entries__": [{"key": "0", "value": "'superuser'"}]
       }
     },
     "globals": { "UserRegistry": { "__id__": 123, "__class__": "UserRegistry", ... } },
     "return_value": "None",
     "exception": "KeyError('missing')",
     "stdout": "text printed between this step and the previous one",
-    "thread": "Thread-1 (only present with --threads)"
+    "thread": "Thread-1 (only present with --threads)",
+    "message": "Tracing stopped: event limit (10000) reached (only present with limit event)"
   }
 ]
 ```
@@ -76,13 +88,14 @@ The tracer outputs a JSON array of TraceEvent objects to stdout:
 - **line** — a line is about to execute
 - **return** — a function is returning (check `return_value`)
 - **exception** — an exception was raised (check `exception`)
+- **limit** — a safety limit was hit (check `message` for details)
 
 ### Object representation
 Complex objects (dicts, lists, sets, class instances) are represented as nested JSON with:
 - `__id__` — Python object identity (`id()`). **Same `__id__` = same object in memory** — this reveals aliasing bugs.
 - `__type__` — for built-in collections: `"dict"`, `"list"`, `"set"`, `"tuple"`
 - `__class__` — for class instances: the class name
-- `__entries__` — dict contents (keys are repr'd)
+- `__entries__` — dict contents as list of `{"key": ..., "value": ...}` pairs
 - `__items__` — list/set/tuple contents
 - `__ref__: true` — back-reference to an already-seen object (cycle detection)
 

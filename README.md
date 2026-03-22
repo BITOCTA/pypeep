@@ -9,6 +9,7 @@ Try the [interactive debugger](https://artemsokh.in/projects/pypeep).
 
 - **Step-by-step tracing** — every line of execution with full variable state via `sys.settrace()`
 - **3 output modes** — `overview` (changed vars only), `locals` (all locals), `full` (locals + globals)
+- **Safety limits** — event count, recursion depth, and timeout protection against infinite loops/recursion
 - **Multithreading** — trace all threads with per-thread stdout capture
 - **Object identity tracking** — `__id__` reveals aliasing bugs, cycle detection built-in
 - **Gotcha detection** — mutable defaults, reference aliasing, late binding closures
