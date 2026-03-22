@@ -414,10 +414,6 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _timeout_handler(_signum: int, _frame: types.FrameType | None) -> None:
-    raise TimeoutError("Execution timed out")
-
-
 def _source_lineno(e: BaseException, source_file: str) -> int:
     lineno = 0
     tb = e.__traceback__
@@ -435,14 +431,24 @@ def _run_traced(code: types.CodeType, tracer: Tracer, source_file: str, args: ar
         "__file__": source_file,
         "__package__": None,
     }
+    _has_sigalrm = hasattr(signal, "SIGALRM")
+    if args.timeout and _has_sigalrm:
+        def _timeout_handler(_signum: int, _frame: types.FrameType | None) -> None:
+            raise TimeoutError("Execution timed out")
+        signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(args.timeout)
+    elif args.timeout:
+        # Windows fallback: watchdog thread sets stop flag
+        def _watchdog() -> None:
+            if not tracer._stopped.wait(args.timeout):
+                tracer._stop(0, "<timeout>", f"Execution timed out after {args.timeout} seconds")
+        threading.Thread(target=_watchdog, daemon=True).start()
+
     old_stdout = sys.stdout
     sys.stdout = tracer.stdout_buf  # type: ignore[assignment]
     if args.threads:
         threading.settrace(tracer)
     sys.settrace(tracer)
-    if args.timeout:
-        signal.signal(signal.SIGALRM, _timeout_handler)
-        signal.alarm(args.timeout)
     try:
         exec(code, globs)
     except TimeoutError as e:
@@ -458,7 +464,7 @@ def _run_traced(code: types.CodeType, tracer: Tracer, source_file: str, args: ar
             message="".join(traceback.format_exception(type(e), e, e.__traceback__)).strip(),
         ))
     finally:
-        if args.timeout:
+        if args.timeout and _has_sigalrm:
             signal.alarm(0)
         sys.settrace(None)
         if args.threads:

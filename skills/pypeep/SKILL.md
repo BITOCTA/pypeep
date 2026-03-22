@@ -48,7 +48,7 @@ When a limit is hit, the tracer emits a `"limit"` event with a `"message"` field
 
 **For inline code snippets:** pipe the code into the wrapper script which handles temp file creation and cleanup automatically:
 ```bash
-bash "{{SKILL_DIR}}/tracer/run_snippet.sh" [--mode overview|locals|full] << 'PYEOF'
+python "{{SKILL_DIR}}/tracer/run_snippet.py" [--mode overview|locals|full] << 'PYEOF'
 # user's code here
 PYEOF
 ```

@@ -13,6 +13,7 @@ Try the [interactive debugger](https://artemsokh.in/projects/pypeep).
 - **Multithreading** — trace all threads with per-thread stdout capture
 - **Object identity tracking** — `__id__` reveals aliasing bugs, cycle detection built-in
 - **Gotcha detection** — mutable defaults, reference aliasing, late binding closures
+- **Cross-platform** — works on macOS, Linux, and Windows
 - **Zero dependencies** — Python stdlib only
 
 ## Installation
