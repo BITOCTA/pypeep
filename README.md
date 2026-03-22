@@ -2,7 +2,7 @@
 
 ![Tests](https://github.com/BITOCTA/pypeep/actions/workflows/test.yml/badge.svg)
 
-A Claude Code skill that traces Python execution step-by-step. Captures every line, variable state, function calls, exceptions, and stdout — so Claude can debug, explain, and verify Python code.
+An AI coding skill that traces Python execution step-by-step. Captures every line, variable state, function calls, exceptions, and stdout — so your AI agent can debug, explain, and verify Python code.
 
 Try the [interactive debugger](https://artemsokh.in/projects/pypeep).
 
@@ -19,18 +19,38 @@ Try the [interactive debugger](https://artemsokh.in/projects/pypeep).
 
 ## Installation
 
-### Using Claude Marketplace (Claude Code)
-
-Install in Claude Code with two commands:
+### Claude Code
 
 ```
 /plugin marketplace add BITOCTA/pypeep
 /plugin install pypeep@pypeep
 ```
 
+### Cursor / Codex CLI / Gemini CLI / Other editors
+
+PyPeep uses the [SKILL.md](https://agentskills.io/specification) standard — supported by 20+ AI editors.
+
+Clone the skill into your editor's skills directory:
+
+```bash
+# Cursor
+git clone https://github.com/BITOCTA/pypeep.git ~/.cursor/skills/pypeep
+
+# Codex CLI
+git clone https://github.com/BITOCTA/pypeep.git ~/.codex/skills/pypeep
+
+# Gemini CLI
+git clone https://github.com/BITOCTA/pypeep.git ~/.gemini/skills/pypeep
+
+# GitHub Copilot (project-level)
+git clone https://github.com/BITOCTA/pypeep.git .copilot/skills/pypeep
+```
+
+Or copy just the `skills/pypeep/` folder into your editor's skills directory.
+
 ## How It Works
 
-Once installed, Claude automatically uses PyPeep when you:
+Once installed, the AI agent automatically uses PyPeep when you:
 
 - Ask to **debug** a Python script
 - Ask to **explain** what code does step by step
@@ -49,7 +69,7 @@ Why does this function share state between calls?
 
 ## Output
 
-Claude receives a JSON trace of every execution step:
+The agent receives a JSON trace of every execution step:
 
 ```json
 {

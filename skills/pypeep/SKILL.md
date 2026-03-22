@@ -1,17 +1,17 @@
 ---
 name: pypeep
 description: >-
-  Traces Python program execution step-by-step using sys.settrace().
-  Shows every line executed, variable states at each step, function calls/returns,
-  exceptions, and stdout capture. Use to debug Python programs, verify code fixes,
-  understand unfamiliar code, or detect common Python gotchas like mutable defaults
-  and reference aliasing.
+  Use this skill when a user asks to debug a Python script that produces wrong
+  output, wants to understand what code does step-by-step, asks why a variable
+  has an unexpected value, or wants to verify a fix works. Also use after editing
+  Python code to confirm the change behaves correctly. Traces execution via
+  sys.settrace(), capturing every line executed, variable states, function
+  calls/returns, exceptions, and stdout as structured JSON.
 ---
 
-# PyPeep — Step-by-Step Python Execution Tracer
+# PyPeep — Non-Interactive Python Debugger
 
-You have access to a Python tracer that captures every execution step of a Python program.
-Use it to debug, test, and understand Python code.
+Captures the full execution history of a Python program as structured JSON — every line that ran, every variable change, every function call/return, every exception with full context. Unlike pdb, no breakpoints or interaction needed: run it, get the complete timeline, analyze after the fact.
 
 ## How to run
 
@@ -57,85 +57,57 @@ PYEOF
 
 ## Output format
 
-The tracer outputs a JSON array of TraceEvent objects to stdout:
+JSON array of trace events to stdout. Each event has: `event` (call/line/return/exception/limit), `line`, `function`, and optional fields: `locals`, `globals`, `changed` (overview mode), `return_value`, `exception`, `stdout`, `thread`, `message`.
 
-```json
-[
-  {
-    "event": "call | line | return | exception | limit",
-    "line": 14,
-    "function": "add_user",
-    "locals": {
-      "name": "'admin'",
-      "roles": {
-        "__id__": 4350457280,
-        "__type__": "dict",
-        "__entries__": [{"key": "0", "value": "'superuser'"}]
-      }
-    },
-    "globals": { "UserRegistry": { "__id__": 123, "__class__": "UserRegistry", ... } },
-    "return_value": "None",
-    "exception": "KeyError('missing')",
-    "stdout": "text printed between this step and the previous one",
-    "thread": "Thread-1 (only present with --threads)",
-    "message": "Tracing stopped: event limit (10000) reached (only present with limit event)"
-  }
-]
+### Reading the output
+
+- **Execution order** — events appear in the order lines actually executed. Follow the sequence to see the real control flow, including branches taken, loop iterations, and function call nesting.
+- **Variable timeline** — in overview mode, `changed` shows which variables changed at each step. Trace a variable across events to see exactly when and where it got its value.
+- **Exception context** — `event: "exception"` includes full `locals` at the moment of failure, plus the call chain that led there.
+- **Stdout mapping** — `stdout` on an event is what was printed *between the previous event and this one*. This tells you which line produced which output.
+- **Object identity** — complex objects include `__id__` (Python `id()`). Same `__id__` on two variables = same object in memory. This reveals aliasing bugs (mutable defaults, shared class attributes).
+
+Other object fields: `__type__` (collections), `__class__` (instances), `__entries__` (dict pairs), `__items__` (list/set/tuple contents), `__ref__: true` (cycle back-reference).
+
+## Analysis checklist
+
+After running the tracer, work through this checklist:
+
+- [ ] **Validate output** — confirm non-empty JSON array. If empty or error, check target file for syntax errors.
+- [ ] **Check for limit events** — if last event is `"limit"`, trace was truncated. Narrow scope or raise `--max-events`.
+- [ ] **Trace execution flow** — follow call → line → return sequence to map what actually ran and in what order. This is the primary value.
+- [ ] **Track variable changes** — use `changed` fields (overview mode) to find where variables got unexpected values. Trace a variable's timeline across events.
+- [ ] **Scan for exceptions** — find `event: "exception"`. Report line, function, exception value, and the variable state at that moment.
+- [ ] **Map stdout to lines** — match `stdout` fields to their source lines to explain which code produced which output.
+- [ ] **Check aliasing** — compare `__id__` values. Same `__id__` = same object = mutation through one affects the other.
+- [ ] **Thread analysis** (if `--threads`) — group by `thread` field. Look for shared state changing across threads.
+
+### For large traces (>200 events)
+
+Redirect to a file and use Read with offset/limit:
+```bash
+python "{{SKILL_DIR}}/tracer/parse.py" <file> --mode overview > /tmp/pypeep_output.json
 ```
+Focus on: function call/return boundaries, exceptions, unexpected variable changes, first/last events. Summarize repetitive loops (e.g., "lines 5-8 repeated 50 times").
 
-### Event types
-- **call** — a function was called
-- **line** — a line is about to execute
-- **return** — a function is returning (check `return_value`)
-- **exception** — an exception was raised (check `exception`)
-- **limit** — a safety limit was hit (check `message` for details)
+## Gotchas
 
-### Object representation
-Complex objects (dicts, lists, sets, class instances) are represented as nested JSON with:
-- `__id__` — Python object identity (`id()`). **Same `__id__` = same object in memory** — this reveals aliasing bugs.
-- `__type__` — for built-in collections: `"dict"`, `"list"`, `"set"`, `"tuple"`
-- `__class__` — for class instances: the class name
-- `__entries__` — dict contents as list of `{"key": ..., "value": ...}` pairs
-- `__items__` — list/set/tuple contents
-- `__ref__: true` — back-reference to an already-seen object (cycle detection)
-
-Primitive values are stored as their `repr()` string (e.g., `"'hello'"`, `"42"`, `"True"`).
-
-## How to analyze traces
-
-When presenting trace results to the user:
-
-1. **Variable mutations** — look for locals/globals that change between consecutive events on the same line or function. Highlight unexpected changes.
-
-2. **Aliasing bugs** — when two variables share the same `__id__`, they point to the same object. Mutations through one affect the other. This is the #1 Python gotcha (mutable default arguments, shared class attributes).
-
-3. **Exceptions** — find events where `event: "exception"`. Report which line and function raised it, and the exception value.
-
-4. **Execution flow** — trace the sequence of `call` → `line` → `return` events to show which functions were called and in what order.
-
-5. **Stdout** — the `stdout` field captures what was printed between trace steps. Aggregate these to show the full program output.
-
-6. **Multithreaded traces** — when `--threads` is used, group analysis by the `"thread"` field. Look for race conditions: variables shared across threads changing unexpectedly, or execution order that differs from what the code implies.
-
-7. **For large traces (>200 events)** — use `--mode overview` (default) to keep output small. If you still need to dig deeper, redirect to a file and use Read with offset/limit:
-   ```bash
-   python "{{SKILL_DIR}}/tracer/parse.py" <file> --mode locals > /tmp/pypeep_output.json
-   ```
-   When summarizing large traces, focus on:
-   - Function call/return boundaries
-   - Lines where exceptions occur
-   - Lines where variables change unexpectedly
-   - The first and last few events
-   - Summarize repetitive loops (e.g., "lines 5-8 repeated 50 times")
+- **Decorators and metaclasses** generate extra call/return events that obscure the actual logic. If the trace is noisy, look for the user's actual function names and skip framework internals.
+- **Generator functions** show a `return` event when they `yield`, with `return_value` being the yielded value. The generator isn't actually done — it will be called again.
+- **Comprehensions** (list/dict/set comps) compile to hidden functions like `<listcomp>`. These appear as separate call/return pairs in the trace.
+- **Large container repr** — containers with many items get truncated by `--max-items`. If aliasing analysis needs the full structure, raise the limit.
+- **Import side effects** — if the target file imports modules with side effects, those will show in the trace. Focus on events in the user's file, not stdlib internals.
+- **Multiline expressions** — the tracer reports the first line of a multiline expression. The traced line may not match what the user expects for split expressions.
+- **`__id__` values change between runs** — don't compare ids across separate tracer invocations. Only compare within a single trace.
 
 ## When to use this tracer
 
-- User asks to **debug** a Python script that produces wrong output
-- User asks to **explain** what a piece of Python code does step by step
-- You've just **edited** Python code and want to verify the fix works
-- User asks about **Python gotchas** (mutable defaults, closures, scope, etc.)
-- You need to understand **why** a specific line produces a certain result
-- User asks to debug **multithreaded** code — use `--threads` to see all thread execution
+- **Wrong output** — user's code runs but produces unexpected results. Trace to find where variables diverge from expectations.
+- **Explain code** — user wants to understand what code does. Trace gives the actual execution order, not what you'd guess from reading it.
+- **Verify a fix** — after editing code, trace both before/after to confirm the execution path changed as intended.
+- **"Why does this line do X?"** — trace to see the exact variable state when that line runs.
+- **Multithreaded bugs** — use `--threads` to see actual execution interleaving across threads.
+- **Python gotchas** — mutable defaults, closures, scope issues. Trace makes the surprising behavior visible.
 
 ## Example files
 
