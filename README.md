@@ -1,5 +1,6 @@
 # PyPeep
 
+![Tests](https://github.com/BITOCTA/pypeep/actions/workflows/test.yml/badge.svg)
 
 A Claude Code skill that traces Python execution step-by-step. Captures every line, variable state, function calls, exceptions, and stdout — so Claude can debug, explain, and verify Python code.
 

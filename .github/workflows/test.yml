@@ -3,6 +3,10 @@ name: Tests
 on:
   push:
     branches: [main]
+    paths:
+      - 'skills/pypeep/tracer/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
   workflow_dispatch:
 
 jobs:
